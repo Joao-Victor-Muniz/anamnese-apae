@@ -1533,10 +1533,14 @@
     // ── ABRIR MODAL ───────────────────────────────────────────
     async function salvarEImprimir() {
       const nome = document.querySelector('#s1 input[placeholder="Nome do paciente"]')?.value?.trim();
-      if (nome) {
-        await salvarPaciente();
+      if (!nome) {
+        mostrarToast('⚠️ Preencha o nome do paciente antes de imprimir.', '#c45f1a');
+        return;
       }
-      abrirListaPacientes();
+      await salvarPaciente();
+      if (pacienteEditandoId) {
+        imprimirPaciente(pacienteEditandoId, { stopPropagation: () => {} });
+      }
     }
 
     async function abrirListaPacientes() {
