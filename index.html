@@ -654,7 +654,7 @@
     </div>
     <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn-imprimir no-print" onclick="abrirListaPacientes()">👥 Pacientes salvos</button>
-      <button class="btn-imprimir no-print" onclick="window.print()">🖨 Imprimir / PDF</button>
+      <button class="btn-imprimir no-print" onclick="salvarEImprimir()">🖨 Imprimir / PDF</button>
     </div>
   </div>
 
@@ -1222,22 +1222,10 @@
           <label>Profissional responsável <span class="obrig">*</span></label>
           <input type="text" placeholder="Nome completo">
         </div>
-        <div class="campo">
-          <label>Conselho / Registro <span class="obrig">*</span></label>
-          <input type="text" placeholder="Ex: CRM 12345 / CRP 06-123456">
-        </div>
-        <div class="campo">
-          <label>Especialidade</label>
-          <input type="text" placeholder="Ex: Pediatra, Psicólogo, Fonoaudiólogo">
-        </div>
-        <div class="campo">
-          <label>Assinatura digital / rubrica</label>
-          <input type="text" placeholder="Espaço reservado para assinatura">
-        </div>
       </div>
       <div style="padding: 0 20px 20px; display:flex; justify-content:flex-end; gap:12px; flex-wrap:wrap">
         <button class="btn btn-secundario no-print" onclick="limpar()">🗑 Novo paciente</button>
-        <button class="btn btn-secundario no-print" onclick="window.print()">🖨 Imprimir / PDF</button>
+        <button class="btn btn-secundario no-print" onclick="salvarEImprimir()">🖨 Imprimir / PDF</button>
         <button class="btn btn-primario no-print" onclick="salvarPaciente()">💾 Salvar paciente</button>
       </div>
     </div>
@@ -1479,12 +1467,19 @@
 
     // ── SALVAR PACIENTE ───────────────────────────────────────
     let pacienteEditandoId = null;
+    let pacienteEditandoNome = "";
 
     async function salvarPaciente() {
       const nome = document.querySelector('#s1 input[placeholder="Nome do paciente"]')?.value?.trim();
       if (!nome) {
         mostrarToast('⚠️ Preencha o nome do paciente antes de salvar.', '#c45f1a');
         return;
+      }
+
+      if (pacienteEditandoId && pacienteEditandoNome && nome.toLowerCase() !== pacienteEditandoNome.toLowerCase()) {
+        if (confirm(`Você alterou o nome de "${pacienteEditandoNome}" para "${nome}".\n\nDeseja salvar como um NOVO paciente?\n\n[OK] = Sim, criar novo paciente\n[Cancelar] = Não, apenas atualizar o nome`)) {
+          pacienteEditandoId = null;
+        }
       }
 
       const btnSalvar = document.querySelector('.btn-primario');
@@ -1500,6 +1495,7 @@
             nome, data_nasc: dataNasc, salvo_em: salvoEm, dados
           }).eq('id', pacienteEditandoId);
           if (error) throw error;
+          pacienteEditandoNome = nome;
           mostrarToast('✅ Paciente atualizado com sucesso!', '#2e7d5e');
         } else {
           const { data, error } = await sb.from('pacientes').insert({
@@ -1507,6 +1503,7 @@
           }).select('id').single();
           if (error) throw error;
           pacienteEditandoId = data.id;
+          pacienteEditandoNome = nome;
           mostrarToast('✅ Paciente salvo na nuvem!', '#2e7d5e');
         }
         atualizarIndicadorSalvo(nome);
@@ -1531,8 +1528,17 @@
 
     // ── CACHE LOCAL DA LISTA ─────────────────────────────────
     let _cacheListaPacientes = [];
+    let paginaAtualPacientes = 1;
 
     // ── ABRIR MODAL ───────────────────────────────────────────
+    async function salvarEImprimir() {
+      const nome = document.querySelector('#s1 input[placeholder="Nome do paciente"]')?.value?.trim();
+      if (nome) {
+        await salvarPaciente();
+      }
+      abrirListaPacientes();
+    }
+
     async function abrirListaPacientes() {
       document.getElementById('buscaPaciente').value = '';
       document.getElementById('modalPacientes').style.display = 'block';
@@ -1548,6 +1554,7 @@
 
     // ── BUSCAR LISTA DO SUPABASE ──────────────────────────────
     async function recarregarLista(filtro) {
+      paginaAtualPacientes = 1;
       try {
         let query = sb.from('pacientes').select('id, nome, data_nasc, salvo_em').order('nome');
         if (filtro) query = query.ilike('nome', '%' + filtro + '%');
@@ -1571,6 +1578,8 @@
       qtd.textContent = lista.length + (lista.length === 1 ? ' paciente' : ' pacientes');
 
       cont.querySelectorAll('.card-paciente').forEach(c => c.remove());
+      const paginacaoExistente = document.getElementById('paginacaoPacientes');
+      if (paginacaoExistente) paginacaoExistente.remove();
 
       // Esconder botão de exclusão múltipla ao re-renderizar
       const btnBulk = document.getElementById('btnExcluirVarios');
@@ -1579,7 +1588,16 @@
       if (lista.length === 0) { sem.style.display = 'block'; return; }
       sem.style.display = 'none';
 
-      lista.forEach(p => {
+      const itensPorPagina = 10;
+      const totalPaginas = Math.ceil(lista.length / itensPorPagina);
+      if (paginaAtualPacientes > totalPaginas) paginaAtualPacientes = totalPaginas;
+      if (paginaAtualPacientes < 1) paginaAtualPacientes = 1;
+
+      const inicio = (paginaAtualPacientes - 1) * itensPorPagina;
+      const fim = inicio + itensPorPagina;
+      const listaPagina = lista.slice(inicio, fim);
+
+      listaPagina.forEach(p => {
         const card = document.createElement('div');
         card.className = 'card-paciente';
         card.dataset.id = p._id;
@@ -1615,6 +1633,30 @@
     `;
         cont.appendChild(card);
       });
+
+      if (totalPaginas > 1) {
+        const pagWrap = document.createElement('div');
+        pagWrap.id = 'paginacaoPacientes';
+        pagWrap.style.cssText = 'display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:16px;padding-top:8px;border-top:1px solid var(--cinza-borda);';
+
+        for (let i = 1; i <= totalPaginas; i++) {
+          const btn = document.createElement('button');
+          btn.textContent = i;
+          btn.style.cssText = `
+            width:34px; height:34px; border-radius:6px; font-weight:600; font-size:13.5px; cursor:pointer; font-family:'DM Sans',sans-serif;
+            border: 1px solid ${i === paginaAtualPacientes ? 'var(--azul-medio)' : 'var(--cinza-borda)'};
+            background: ${i === paginaAtualPacientes ? 'var(--azul-medio)' : 'var(--cinza)'};
+            color: ${i === paginaAtualPacientes ? 'white' : 'var(--texto)'};
+            transition: all 0.2s;
+          `;
+          btn.onclick = () => {
+            paginaAtualPacientes = i;
+            renderizarLista(lista);
+          };
+          pagWrap.appendChild(btn);
+        }
+        cont.appendChild(pagWrap);
+      }
     }
 
     // ── FILTRAR ───────────────────────────────────────────────
@@ -1630,6 +1672,7 @@
         const { data, error } = await sb.from('pacientes').select('*').eq('id', id).single();
         if (error) throw error;
         pacienteEditandoId = id;
+        pacienteEditandoNome = data.nome;
         // dados JSON está no campo dados; completar com campos de topo
         const registro = { ...(data.dados || {}), nome: data.nome, dataNasc: data.data_nasc, _salvoEm: data.salvo_em, _id: data.id };
         restaurarDados(registro);
@@ -1704,6 +1747,7 @@
     function novoFormulario() {
       if (!confirm('Deseja iniciar um novo formulário? O preenchimento atual será perdido se não foi salvo.')) return;
       pacienteEditandoId = null;
+      pacienteEditandoNome = "";
       const ind = document.getElementById('indicadorSalvo');
       if (ind) ind.remove();
       document.querySelectorAll('input:not([readonly]), select, textarea').forEach(el => {
@@ -1921,8 +1965,6 @@
 
   ${secao('Profissional Responsável', '#1a3a5c', [
         ['Nome', campoDe('s9', 'Nome completo')],
-        ['Conselho / Registro', campoDe('s9', 'Ex: CRM')],
-        ['Especialidade', campoDe('s9', 'Ex: Pediatra')],
       ])}
 
   <div style="margin-top:32px;padding-top:12px;border-top:1px solid #d8dde6;font-size:10.5px;color:#aaa;text-align:center">
