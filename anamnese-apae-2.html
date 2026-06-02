@@ -498,11 +498,11 @@
         </div>
         <div class="campo">
           <label>Data de nascimento <span class="obrig">*</span></label>
-          <input type="date">
+          <input type="date" id="inputNascimento" oninput="calcularIdade()">
         </div>
         <div class="campo">
           <label>Idade (calculada)</label>
-          <input type="text" placeholder="Ex: 12 anos 4 meses" readonly style="background:#eef2f8">
+          <input type="text" id="inputIdade" placeholder="Ex: 12 anos 4 meses" readonly style="background:#eef2f8">
         </div>
         <div class="campo">
           <label>Sexo biológico</label>
@@ -1103,16 +1103,52 @@ function toggle(id) {
 // ── PROGRESSO ─────────────────────────────────────────────
 function calcProgress() {
   const campos = document.querySelectorAll('input:not([readonly]), select, textarea');
-  let total = campos.length, preenchidos = 0;
+  let total = 0, preenchidos = 0;
   campos.forEach(c => {
     if (c.tagName === 'INPUT' && (c.type === 'checkbox' || c.type === 'radio')) return;
+    total++;
     if (c.value && c.value.trim() !== '') preenchidos++;
   });
-  const pct = Math.round((preenchidos / total) * 100);
+  const pct = total === 0 ? 0 : Math.round((preenchidos / total) * 100);
   document.getElementById('pct').textContent = pct + '%';
   document.getElementById('barra').style.width = pct + '%';
 }
 document.querySelectorAll('input, select, textarea').forEach(el => el.addEventListener('input', calcProgress));
+
+// ── IDADE AUTOMÁTICA ──────────────────────────────────────
+function calcularIdade() {
+  const dataNascInp = document.getElementById('inputNascimento');
+  const idadeInp = document.getElementById('inputIdade');
+  if (!dataNascInp || !idadeInp) return;
+  const valor = dataNascInp.value;
+  if (!valor) { idadeInp.value = ''; return; }
+  
+  const hoje = new Date();
+  const nasc = new Date(valor + 'T12:00:00');
+  if (isNaN(nasc.getTime())) return;
+  
+  let anos = hoje.getFullYear() - nasc.getFullYear();
+  let meses = hoje.getMonth() - nasc.getMonth();
+  
+  if (meses < 0 || (meses === 0 && hoje.getDate() < nasc.getDate())) {
+    anos--;
+    meses += 12;
+  }
+  
+  if (hoje.getDate() < nasc.getDate()) {
+    meses--;
+    if (meses < 0) meses = 11;
+  }
+  
+  if (anos === 0 && meses === 0) {
+    idadeInp.value = 'Menos de 1 mês';
+  } else {
+    let str = '';
+    if (anos > 0) str += anos + (anos === 1 ? ' ano' : ' anos');
+    if (meses > 0) str += (str ? ' e ' : '') + meses + (meses === 1 ? ' mês' : ' meses');
+    idadeInp.value = str;
+  }
+}
 
 // ── IMC AUTOMÁTICO ────────────────────────────────────────
 function calcIMC() {
@@ -1173,6 +1209,7 @@ function restaurarDados(dados) {
   document.querySelectorAll('.sec-header').forEach(h => h.classList.add('aberto'));
   document.querySelectorAll('.sec-body').forEach(b => b.classList.add('aberto'));
   calcProgress();
+  calcularIdade();
 }
 
 // ── SALVAR PACIENTE ───────────────────────────────────────
