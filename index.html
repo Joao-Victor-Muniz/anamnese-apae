@@ -1,0 +1,1735 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anamnese — APAE</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --azul: #1a3a5c;
+    --azul-medio: #2d5986;
+    --azul-claro: #e8f0f8;
+    --verde: #2e7d5e;
+    --verde-claro: #e6f4ef;
+    --laranja: #c45f1a;
+    --laranja-claro: #fdf0e6;
+    --cinza: #f4f5f7;
+    --cinza-borda: #d8dde6;
+    --texto: #1c2535;
+    --texto-leve: #5a6580;
+    --branco: #ffffff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  @media print {
+    body { background: white !important; }
+    .no-print { display: none !important; }
+    .pagina { box-shadow: none !important; margin: 0 !important; page-break-after: always; }
+    section { break-inside: avoid; }
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #dce6f0;
+    color: var(--texto);
+    line-height: 1.55;
+    font-size: 13.5px;
+  }
+
+  /* HEADER FIXO */
+  .topo {
+    background: var(--azul);
+    color: white;
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  }
+  .topo-icone {
+    width: 46px; height: 46px;
+    background: white;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .topo-texto h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+  }
+  .topo-texto p {
+    font-size: 11.5px;
+    opacity: 0.75;
+    margin-top: 2px;
+  }
+  .btn-imprimir {
+    margin-left: auto;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.35);
+    color: white;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.2s;
+  }
+  .btn-imprimir:hover { background: rgba(255,255,255,0.25); }
+
+  /* WRAPPER */
+  .wrapper { max-width: 860px; margin: 0 auto; padding: 28px 16px 60px; }
+
+  /* AVISO */
+  .aviso {
+    background: var(--laranja-claro);
+    border-left: 4px solid var(--laranja);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 12.5px;
+    color: var(--laranja);
+    margin-bottom: 22px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .aviso span:first-child { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* PAGINA */
+  .pagina {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 16px rgba(26,58,92,0.10);
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+
+  /* SEÇÃO HEADER */
+  .sec-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 20px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 15px;
+    font-weight: 400;
+    color: white;
+    cursor: pointer;
+    user-select: none;
+  }
+  .sec-header .icone { font-size: 17px; }
+  .sec-header .toggle { margin-left: auto; font-size: 12px; opacity: 0.8; transition: transform 0.3s; }
+  .sec-header.aberto .toggle { transform: rotate(180deg); }
+
+  .cor-azul .sec-header   { background: var(--azul-medio); }
+  .cor-verde .sec-header  { background: var(--verde); }
+  .cor-roxo .sec-header   { background: #5b3fa6; }
+  .cor-marrom .sec-header { background: #7a4f2e; }
+  .cor-escuro .sec-header { background: #2c3e50; }
+  .cor-rose .sec-header   { background: #a63f5b; }
+
+  /* CONTEÚDO DA SEÇÃO */
+  .sec-body {
+    padding: 20px;
+    display: none;
+  }
+  .sec-body.aberto { display: block; }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px 20px; }
+  .col-full { grid-column: 1 / -1; }
+
+  @media (max-width: 600px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* CAMPO */
+  .campo label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--texto-leve);
+    margin-bottom: 5px;
+  }
+  .campo label .obrig { color: #c0392b; margin-left: 2px; }
+  .campo input,
+  .campo select,
+  .campo textarea {
+    width: 100%;
+    border: 1px solid var(--cinza-borda);
+    border-radius: 6px;
+    padding: 9px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--texto);
+    background: var(--cinza);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .campo input:focus,
+  .campo select:focus,
+  .campo textarea:focus {
+    border-color: var(--azul-medio);
+    box-shadow: 0 0 0 3px rgba(45,89,134,0.12);
+    background: white;
+  }
+  .campo textarea { resize: vertical; min-height: 72px; }
+
+  /* CHECKBOX GROUP */
+  .check-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    margin-top: 2px;
+  }
+  .check-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--texto);
+    cursor: pointer;
+  }
+  .check-group input[type=checkbox],
+  .check-group input[type=radio] {
+    width: auto;
+    accent-color: var(--azul-medio);
+    cursor: pointer;
+  }
+
+  /* ESCALA */
+  .escala-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .escala-wrap input[type=range] {
+    flex: 1;
+    accent-color: var(--azul-medio);
+  }
+  .escala-val {
+    min-width: 32px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--azul-medio);
+  }
+
+  /* TABELA EXAME FÍSICO */
+  .tabela-exame {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    margin-top: 6px;
+  }
+  .tabela-exame th {
+    background: var(--azul-claro);
+    color: var(--azul);
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .tabela-exame td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--cinza-borda);
+    vertical-align: middle;
+  }
+  .tabela-exame tr:last-child td { border-bottom: none; }
+  .tabela-exame td:first-child {
+    font-weight: 500;
+    color: var(--texto-leve);
+    width: 38%;
+  }
+  .tabela-exame input, .tabela-exame select {
+    border: 1px solid var(--cinza-borda);
+    border-radius: 5px;
+    padding: 6px 9px;
+    font-size: 12.5px;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cinza);
+    width: 100%;
+    outline: none;
+  }
+  .tabela-exame input:focus, .tabela-exame select:focus {
+    border-color: var(--azul-medio);
+    background: white;
+  }
+
+  /* DIVISOR */
+  .divisor {
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--azul-medio);
+    padding: 8px 0 4px;
+    border-bottom: 1.5px solid var(--cinza-borda);
+    margin: 16px 0 12px;
+  }
+
+  /* RODAPÉ */
+  .rodape-form {
+    padding: 18px 20px;
+    border-top: 1px solid var(--cinza-borda);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    background: var(--cinza);
+  }
+  .rodape-form .campo { flex: 1; min-width: 180px; }
+
+  /* BOTÕES AÇÃO */
+  .acoes {
+    display: flex; gap: 12px; justify-content: flex-end;
+    margin-top: 10px;
+  }
+  .btn {
+    padding: 11px 24px;
+    border-radius: 7px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn:hover { opacity: 0.88; }
+  .btn:active { transform: scale(0.97); }
+  .btn-primario { background: var(--azul); color: white; }
+  .btn-secundario { background: var(--cinza); color: var(--texto); border: 1px solid var(--cinza-borda); }
+
+  /* PROGRESS BAR */
+  .progresso-wrap { margin-bottom: 22px; }
+  .progresso-label {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--texto-leve); margin-bottom: 6px;
+  }
+  .progresso-bar {
+    height: 5px;
+    background: var(--cinza-borda);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .progresso-fill {
+    height: 100%;
+    background: var(--azul-medio);
+    border-radius: 10px;
+    transition: width 0.4s;
+    width: 0%;
+  }
+
+  /* TAG STATUS */
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .tag-verde { background: var(--verde-claro); color: var(--verde); }
+  .tag-azul  { background: var(--azul-claro);  color: var(--azul-medio); }
+
+  /* BOTÃO FLUTUANTE ADICIONAR PERGUNTAS */
+  .fab-adicionar {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--azul);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 13px 22px 13px 18px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(26,58,92,0.35);
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    user-select: none;
+  }
+  .fab-adicionar:hover {
+    background: var(--azul-medio);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px rgba(26,58,92,0.40);
+  }
+  .fab-adicionar:active { transform: scale(0.96); }
+  .fab-adicionar .fab-icone {
+    width: 26px; height: 26px;
+    background: rgba(255,255,255,0.20);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  /* MODAL ADICIONAR PERGUNTA */
+  .modal-pergunta-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    background: rgba(26,58,92,0.55);
+    backdrop-filter: blur(3px);
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-pergunta-overlay.aberto { display: flex; }
+  .modal-pergunta-box {
+    background: white;
+    border-radius: 14px;
+    width: 94%;
+    max-width: 540px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.28);
+    overflow: hidden;
+    animation: slideUp 0.22s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .modal-pergunta-header {
+    background: var(--azul);
+    color: white;
+    padding: 16px 22px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .modal-pergunta-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 16px;
+    font-weight: 400;
+    flex: 1;
+  }
+  .modal-pergunta-header button {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-pergunta-body { padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+  .modal-pergunta-body .campo label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--texto-leve); margin-bottom: 5px; display: block;
+  }
+  .modal-pergunta-body .campo input,
+  .modal-pergunta-body .campo select,
+  .modal-pergunta-body .campo textarea {
+    width: 100%;
+    border: 1px solid var(--cinza-borda);
+    border-radius: 6px;
+    padding: 9px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--texto);
+    background: var(--cinza);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .modal-pergunta-body .campo input:focus,
+  .modal-pergunta-body .campo select:focus,
+  .modal-pergunta-body .campo textarea:focus {
+    border-color: var(--azul-medio);
+    box-shadow: 0 0 0 3px rgba(45,89,134,0.12);
+    background: white;
+  }
+  .modal-pergunta-footer {
+    padding: 14px 22px;
+    border-top: 1px solid var(--cinza-borda);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background: var(--cinza);
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPO -->
+<div class="topo">
+  <div class="topo-icone">🧩</div>
+  <div class="topo-texto">
+    <h1>Anamnese — Neurodivergência & Deficiência Intelectual</h1>
+    <p>Associação de Pais e Amigos dos Excepcionais (APAE) · Formulário Multiprofissional</p>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">
+    <button class="btn-imprimir no-print" onclick="abrirListaPacientes()">👥 Pacientes salvos</button>
+    <button class="btn-imprimir no-print" onclick="window.print()">🖨 Imprimir / PDF</button>
+  </div>
+</div>
+
+<div class="wrapper">
+
+  <!-- AVISO -->
+  <div class="aviso no-print">
+    <span>ℹ️</span>
+    <span>Formulário destinado à equipe multiprofissional. Todos os campos são opcionais salvo os marcados com <strong>*</strong>. As informações são confidenciais e regidas pela LGPD. Preencha com linguagem acessível ao responsável.</span>
+  </div>
+
+  <!-- PROGRESSO -->
+  <div class="progresso-wrap no-print">
+    <div class="progresso-label">
+      <span>Progresso do preenchimento</span>
+      <span id="pct">0%</span>
+    </div>
+    <div class="progresso-bar"><div class="progresso-fill" id="barra"></div></div>
+  </div>
+
+  <!-- ① IDENTIFICAÇÃO -->
+  <div class="pagina cor-azul" id="s1">
+    <div class="sec-header aberto" onclick="toggle('s1')">
+      <span class="icone">👤</span>
+      <span>1. Identificação do Paciente</span>
+      <span class="toggle">▼</span>
+    </div>
+    <div class="sec-body aberto">
+      <div class="grid-2">
+        <div class="campo col-full">
+          <label>Nome completo <span class="obrig">*</span></label>
+          <input type="text" placeholder="Nome do paciente">
+        </div>
+        <div class="campo">
+          <label>Data de nascimento <span class="obrig">*</span></label>
+          <input type="date">
+        </div>
+        <div class="campo">
+          <label>Idade (calculada)</label>
+          <input type="text" placeholder="Ex: 12 anos 4 meses" readonly style="background:#eef2f8">
+        </div>
+        <div class="campo">
+          <label>Sexo biológico</label>
+          <select>
+            <option value="">Selecione</option>
+            <option>Masculino</option>
+            <option>Feminino</option>
+            <option>Intersexo</option>
+            <option>Não informado</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Identidade de gênero</label>
+          <input type="text" placeholder="Como o paciente se identifica">
+        </div>
+        <div class="campo">
+          <label>Prontuário / Matrícula</label>
+          <input type="text" placeholder="Nº interno">
+        </div>
+        <div class="campo">
+          <label>CNS (Cartão Nacional de Saúde)</label>
+          <input type="text" placeholder="000.0000.0000.0000">
+        </div>
+        <div class="campo col-full">
+          <label>Endereço</label>
+          <input type="text" placeholder="Rua, número, bairro, cidade – UF">
+        </div>
+        <div class="campo">
+          <label>Telefone de contato</label>
+          <input type="tel" placeholder="(XX) 9XXXX-XXXX">
+        </div>
+        <div class="campo">
+          <label>Responsável legal <span class="obrig">*</span></label>
+          <input type="text" placeholder="Nome e grau de parentesco">
+        </div>
+        <div class="campo">
+          <label>Escola / Instituição de ensino</label>
+          <input type="text" placeholder="Nome da escola e série">
+        </div>
+        <div class="campo">
+          <label>Data da consulta <span class="obrig">*</span></label>
+          <input type="date">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② QUEIXA PRINCIPAL -->
+  <div class="pagina cor-verde" id="s2">
+    <div class="sec-header" onclick="toggle('s2')">
+      <span class="icone">💬</span>
+      <span>2. Queixa Principal e Motivo do Atendimento</span>
+      <span class="toggle">▼</span>
+    </div>
+    <div class="sec-body">
+      <div class="grid-2">
+        <div class="campo col-full">
+          <label>Queixa principal (nas palavras do responsável)</label>
+          <textarea placeholder="Ex: 'Meu filho não fala e bate a cabeça na parede'"></textarea>
+        </div>
+        <div class="campo col-full">
+          <label>Há quanto tempo apresenta esta queixa?</label>
+          <input type="text" placeholder="Ex: desde os 2 anos / há 6 meses">
+        </div>
+        <div class="campo col-full">
+          <label>Quais profissionais já atenderam este paciente?</label>
+          <div class="check-group">
+            <label><input type="checkbox"> Neuropediatra</label>
+            <label><input type="checkbox"> Psicólogo</label>
+            <label><input type="checkbox"> Fonoaudiólogo</label>
+            <label><input type="checkbox"> Terapeuta Ocupacional</label>
+            <label><input type="checkbox"> Fisioterapeuta</label>
+            <label><input type="checkbox"> Psiquiatra</label>
+            <label><input type="checkbox"> Assistente Social</label>
+            <label><input type="checkbox"> Pedagogo</label>
+            <label><input type="checkbox"> Médico clínico</label>
+            <label><input type="checkbox"> Outro</label>
+          </div>
+        </div>
+        <div class="campo col-full">
+          <label>Diagnósticos já recebidos</label>
+          <div class="check-group">
+            <label><input type="checkbox"> Deficiência Intelectual (DI)</label>
+            <label><input type="checkbox"> TEA (Autismo)</label>
+            <label><input type="checkbox"> TDAH</label>
+            <label><input type="checkbox"> Síndrome de Down</label>
+            <label><input type="checkbox"> Síndrome de Williams</label>
+            <label><input type="checkbox"> Síndrome de Angelman</label>
+            <label><input type="checkbox"> Paralisia Cerebral</label>
+            <label><input type="checkbox"> Epilepsia</label>
+            <label><input type="checkbox"> Dislexia</label>
+            <label><input type="checkbox"> Outro / Em investigação</label>
+          </div>
+        </div>
+        <div class="campo col-full">
+          <label>CID-10 / CID-11 (se disponível)</label>
+          <input type="text" placeholder="Ex: F70, F84.0, Q90">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ AVALIAÇÃO FUNCIONAL -->
+  <div class="pagina cor-marrom" id="s4">
+    <div class="sec-header" onclick="toggle('s4')">
+      <span class="icone">🧠</span>
+      <span>3. Avaliação Funcional Atual</span>
+      <span class="toggle">▼</span>
+    </div>
+    <div class="sec-body">
+
+      <div class="divisor">Avaliação funcional atual</div>
+      <div class="grid-2" style="margin-top:12px">
+        <div class="campo">
+          <label>Nível de DI estimado (CID / DSM-5)</label>
+          <select>
+            <option value="">Selecione</option>
+            <option>Leve (QI 50–69)</option>
+            <option>Moderada (QI 35–49)</option>
+            <option>Grave (QI 20–34)</option>
+            <option>Profunda (QI &lt;20)</option>
+            <option>Em avaliação</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Escolaridade atual</label>
+          <select>
+            <option value="">Selecione</option>
+            <option>Não frequenta escola</option>
+            <option>Estimulação precoce</option>
+            <option>Ed. Infantil – AEE</option>
+            <option>Ensino Fundamental – AEE</option>
+            <option>EJA</option>
+            <option>Classe especial APAE</option>
+            <option>Oficina profissionalizante</option>
+          </select>
+        </div>
+        <div class="campo col-full">
+          <label>Habilidades de autocuidado presentes</label>
+          <div class="check-group">
+            <label><input type="checkbox"> Alimenta-se sozinho</label>
+            <label><input type="checkbox"> Veste-se sozinho</label>
+            <label><input type="checkbox"> Higiene pessoal independente</label>
+            <label><input type="checkbox"> Reconhece perigo</label>
+            <label><input type="checkbox"> Usa transporte público</label>
+            <label><input type="checkbox"> Maneja dinheiro</label>
+          </div>
+        </div>
+        <div class="campo col-full">
+          <label>Comportamentos desafiadores presentes</label>
+          <div class="check-group">
+            <label><input type="checkbox"> Autoagressão</label>
+            <label><input type="checkbox"> Heteroagressão</label>
+            <label><input type="checkbox"> Estereotipias motoras</label>
+            <label><input type="checkbox"> Ecolalia</label>
+            <label><input type="checkbox"> Fuga / evasão</label>
+            <label><input type="checkbox"> Hiperfoco em objetos</label>
+            <label><input type="checkbox"> Recusa alimentar seletiva</label>
+            <label><input type="checkbox"> Insônia / alteração sono</label>
+            <label><input type="checkbox"> Nenhum</label>
+          </div>
+        </div>
+        <div class="campo col-full">
+          <label>Intensidade dos comportamentos desafiadores (0 = nenhum · 10 = muito intenso)</label>
+          <div class="escala-wrap">
+            <input type="range" min="0" max="10" value="0" oninput="this.nextElementSibling.textContent=this.value">
+            <span class="escala-val">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑤ ANTECEDENTES CLÍNICOS E FAMILIARES -->
+  <div class="pagina cor-escuro" id="s5">
+    <div class="sec-header" onclick="toggle('s5')">
+      <span class="icone">🏥</span>
+      <span>4. Antecedentes Clínicos e Histórico Familiar</span>
+      <span class="toggle">▼</span>
+    </div>
+    <div class="sec-body">
+      <div class="grid-2">
+        <div class="campo col-full">
+          <label>Doenças / condições já diagnosticadas</label>
+          <div class="check-group">
+            <label><input type="checkbox"> Epilepsia / Convulsões</label>
+            <label><input type="checkbox"> Distúrbio do sono</label>
+            <label><input type="checkbox"> Hipotireoidismo</label>
+            <label><input type="checkbox"> Cardiopatia congênita</label>
+            <label><input type="checkbox"> Malformação óssea</label>
+            <label><input type="checkbox"> Déficit visual</label>
+            <label><input type="checkbox"> Déficit auditivo</label>
+            <label><input type="checkbox"> Doença respiratória crônica</label>
+            <label><input type="checkbox"> Transtorno de humor</label>
+            <label><input type="checkbox"> Transtorno alimentar</label>
+            <label><input type="checkbox"> Outras</label>
+          </div>
+        </div>
+        <div class="campo col-full">
+          <label>Histórico de internações / cirurgias</label>
+          <textarea placeholder="Descreva: motivo, local, ano"></textarea>
+        </div>
+        <div class="campo col-full">
+          <label>Medicações em uso</label>
+          <textarea placeholder="Nome do medicamento, dose, frequência. Ex: Risperidona 0,5 mg – 1x/dia"></textarea>
+        </div>
+        <div class="campo col-full">
+          <label>Alergias conhecidas</label>
+          <input type="text" placeholder="Medicamentos, alimentos, materiais">
+        </div>
+        <div class="campo col-full">
+          <label>Histórico familiar relevante (consanguinidade, casos semelhantes na família)</label>
+          <textarea placeholder="Ex: pais primos de 1º grau; irmão com DI; avó com epilepsia"></textarea>
+        </div>
+        <div class="campo">
+          <label>Vacinação</label>
+          <select>
+            <option value="">Selecione</option>
+            <option>Completa para idade</option>
+            <option>Incompleta</option>
+            <option>Não vacinado</option>
+            <option>Não sabe informar</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Última consulta médica</label>
+          <input type="date">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑥ CONTEXTO FAMILIAR E SOCIAL -->
+  <div class="pagina cor-rose" id="s6">
+    <div class="sec-header" onclick="toggle('s6')">
+      <span class="icone">🏠</span>
+      <span>5. Contexto Familiar, Social e Ambiental</span>
+      <span class="toggle">▼</span>
+    </div>
+    <div class="sec-body">
+      <div class="grid-2">
+        <div class="campo">
+          <label>Composição familiar (com quem mora)</label>
+          <input type="text" placeholder="Ex: mãe, pai e 2 irmãos">
+        </div>
+        <div class="campo">
+          <label>Renda familiar aproximada</label>
+          <select>
+            <option value="">Selecione</option>
+            <option>Até 1 salário mínimo</option>
+            <option>1–3 salários mínimos</option>
+            <option>3–5 salários mínimos</option>
+            <option>Acima de 5 salários mínimos</option>
+            <option>Não informado</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Recebe benefício assistencial (BPC/LOAS)</label>
+          <select>
+            <option value="">Selecione</option>
+            <option>Sim, recebe</option>
+            <option>Não recebe</option>
+            <option>Em processo de solicitação</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Principal cuidador</label>
+          <input type="text" placeholder="Ex: mãe (40 anos, do lar)">
+        </div>
+        <div class="campo col-full">
+          <label>Rede de apoio familiar</label>
+          <div class="check-group">
+            <label><input type="checkbox"> Ambos os pais presentes</label>
+            <label><input type="checkbox"> Família extensa (avós, tios)</label>
+            <label><input type="checkbox"> Família nuclear apenas</label>
+            <label><input type="checkbox"> Responsável único</label>
+            <label><input type="checkbox"> Cuidador contratado</label>
+            <label><input type="checkbox"> Instituição / abrigo</label>
+          </div>
+        </div>
+        <div class="campo col-full">
+          <label>Nível de sobrecarga percebida do cuidador (0 = sem sobrecarga · 10 = sobrecarga máxima)</label>
+          <div class="escala-wrap">
+            <input type="range" min="0" max="10" value="0" oninput="this.nextElementSibling.textContent=this.value">
+            <span class="escala-val">0</span>
+          </div>
+        </div>
+        <div class="campo col-full">
+          <label>Barreiras ao tratamento relatadas</label>
+          <div class="check-group">
+            <label><input type="checkbox"> Dificuldade de transporte</label>
+            <label><input type="checkbox"> Falta de tempo do responsável</label>
+            <label><input type="checkbox"> Dificuldade financeira</label>
+            <label><input type="checkbox"> Desconhecimento dos direitos</label>
+            <label><input type="checkbox"> Resistência do paciente</label>
+            <label><input type="checkbox"> Nenhuma</label>
+          </div>
+        </div>
+        <div class="campo col-full">
+          <label>Observações sobre contexto social / ambiental</label>
+          <textarea placeholder="Condições de moradia, acesso a serviços, vulnerabilidade social..."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑦ EXAME FÍSICO -->
+  <div class="pagina cor-azul" id="s7">
+    <div class="sec-header" onclick="toggle('s7')">
+      <span class="icone">🩺</span>
+      <span>6. Exame Físico</span>
+      <span class="toggle">▼</span>
+    </div>
+    <div class="sec-body">
+
+      <div class="divisor">Dados Vitais e Antropométricos</div>
+      <table class="tabela-exame">
+        <thead><tr><th>Parâmetro</th><th>Valor</th></tr></thead>
+        <tbody>
+          <tr><td>Peso (kg)</td><td><input type="number" placeholder="Ex: 32,5"></td></tr>
+          <tr><td>Altura / Estatura (cm)</td><td><input type="number" placeholder="Ex: 128"></td></tr>
+          <tr><td>IMC (calculado)</td><td><input placeholder="Calculado automaticamente" readonly style="background:#eef2f8"></td></tr>
+          <tr><td>Temperatura (°C)</td><td><input type="number" placeholder="Ex: 36,5" step="0.1"></td></tr>
+          <tr><td>Frequência cardíaca (bpm)</td><td><input type="number" placeholder="Ex: 88"></td></tr>
+          <tr><td>Frequência respiratória (irpm)</td><td><input type="number" placeholder="Ex: 20"></td></tr>
+          <tr><td>Pressão arterial (mmHg)</td><td><input placeholder="Ex: 100/60"></td></tr>
+          <tr><td>Saturação O₂ (%)</td><td><input type="number" placeholder="Ex: 98"></td></tr>
+        </tbody>
+      </table>
+
+      <div class="divisor">Estado Geral e Aspecto</div>
+      <div class="grid-2" style="margin-top:10px">
+        <div class="campo">
+          <label>Estado geral</label>
+          <select>
+            <option value="">Selecione</option>
+            <option>Bom estado geral (BEG)</option>
+            <option>Regular estado geral (REG)</option>
+            <option>Mau estado geral (MEG)</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Nível de cooperação durante exame</label>
+          <select>
+            <option value="">Selecione</option>
+            <option>Cooperativo</option>
+            <option>Parcialmente cooperativo</option>
+            <option>Não cooperativo</option>
+            <option>Necessitou contenção gentil</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Consciência / Orientação</label>
+          <select>
+            <option value="">Selecione</option>
+            <option>Alerta e orientado</option>
+            <option>Alerta, desorientado</option>
+            <option>Sonolento</option>
+            <option>Torporoso</option>
+            <option>Não avaliável</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Hidratação e nutrição</label>
+          <select>
+            <option value="">Selecione</option>
+            <option>Hidratado e nutrido</option>
+            <option>Levemente desidratado</option>
+            <option>Desnutrido</option>
+            <option>Sobrepeso / Obesidade</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="divisor">Pele, Mucosas e Fâneros</div>
+      <table class="tabela-exame">
+        <thead><tr><th>Avaliação</th><th>Achado</th></tr></thead>
+        <tbody>
+          <tr><td>Coloração da pele</td>
+            <td><select><option value="">Selecione</option><option>Normocorada</option><option>Pálida</option><option>Cianótica</option><option>Ictérica</option><option>Hiperemiada</option></select></td></tr>
+          <tr><td>Manchas / lesões cutâneas</td><td><input placeholder="Ex: manchas café-com-leite, petéquias, cicatrizes"></td></tr>
+          <tr><td>Mucosas orais</td>
+            <td><select><option value="">Selecione</option><option>Úmidas e coradas</option><option>Ressecadas</option><option>Hiperêmicas</option><option>Com lesões</option></select></td></tr>
+          <tr><td>Condição dentária / oral</td><td><input placeholder="Ex: bruxismo, cáries, higiene precária, macroglossia"></td></tr>
+          <tr><td>Cabelos / unhas</td><td><input placeholder="Ex: fragilidade, desnutrição, hábito de arrancar"></td></tr>
+        </tbody>
+      </table>
+
+      <div class="divisor">Impressão Clínica Geral</div>
+      <div class="campo" style="margin-top:10px">
+        <label>Conclusão / hipóteses diagnósticas do exame físico</label>
+        <textarea placeholder="Resumo dos achados relevantes, hipóteses diagnósticas e condutas sugeridas"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑧ ENCAMINHAMENTOS E PLANO -->
+  <div class="pagina cor-verde" id="s8">
+    <div class="sec-header" onclick="toggle('s8')">
+      <span class="icone">📋</span>
+      <span>7. Encaminhamentos e Plano Terapêutico</span>
+      <span class="toggle">▼</span>
+    </div>
+    <div class="sec-body">
+      <div class="grid-2">
+        <div class="campo col-full">
+          <label>Encaminhamentos solicitados</label>
+          <div class="check-group">
+            <label><input type="checkbox"> Neuropediatra</label>
+            <label><input type="checkbox"> Psicólogo / neuropsicólogo</label>
+            <label><input type="checkbox"> Fonoaudiólogo</label>
+            <label><input type="checkbox"> Terapeuta Ocupacional</label>
+            <label><input type="checkbox"> Fisioterapeuta</label>
+            <label><input type="checkbox"> Oftalmologista</label>
+            <label><input type="checkbox"> Otorrinolaringologista</label>
+            <label><input type="checkbox"> Endocrinologista</label>
+            <label><input type="checkbox"> Cardiologista</label>
+            <label><input type="checkbox"> Genética médica</label>
+            <label><input type="checkbox"> Psiquiatra infantil</label>
+            <label><input type="checkbox"> Assistente Social</label>
+          </div>
+        </div>
+        <div class="campo col-full">
+          <label>Exames complementares solicitados</label>
+          <div class="check-group">
+            <label><input type="checkbox"> Hemograma completo</label>
+            <label><input type="checkbox"> TSH / T4 livre</label>
+            <label><input type="checkbox"> Cariótipo</label>
+            <label><input type="checkbox"> EEG (Eletroencefalograma)</label>
+            <label><input type="checkbox"> RM de encéfalo</label>
+            <label><input type="checkbox"> TC de crânio</label>
+            <label><input type="checkbox"> Audiometria</label>
+            <label><input type="checkbox"> Avaliação psicológica (testes padronizados)</label>
+            <label><input type="checkbox"> BERA</label>
+            <label><input type="checkbox"> Raio X coluna</label>
+          </div>
+        </div>
+        <div class="campo col-full">
+          <label>Plano terapêutico proposto</label>
+          <textarea style="min-height:90px" placeholder="Descreva as intervenções, frequência de atendimentos, metas de curto e longo prazo"></textarea>
+        </div>
+        <div class="campo">
+          <label>Retorno agendado</label>
+          <input type="date">
+        </div>
+        <div class="campo">
+          <label>Urgência do caso</label>
+          <select>
+            <option value="">Selecione</option>
+            <option>Eletivo (rotina)</option>
+            <option>Prioritário (< 30 dias)</option>
+            <option>Urgente (< 7 dias)</option>
+            <option>Emergência</option>
+          </select>
+        </div>
+        <div class="campo col-full">
+          <label>Observações finais / Anotações da equipe</label>
+          <textarea placeholder="Outros registros importantes para a equipe multidisciplinar"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RODAPÉ ASSINATURA -->
+  <div class="pagina" id="s9">
+    <div class="rodape-form">
+      <div class="campo">
+        <label>Profissional responsável <span class="obrig">*</span></label>
+        <input type="text" placeholder="Nome completo">
+      </div>
+      <div class="campo">
+        <label>Conselho / Registro <span class="obrig">*</span></label>
+        <input type="text" placeholder="Ex: CRM 12345 / CRP 06-123456">
+      </div>
+      <div class="campo">
+        <label>Especialidade</label>
+        <input type="text" placeholder="Ex: Pediatra, Psicólogo, Fonoaudiólogo">
+      </div>
+      <div class="campo">
+        <label>Assinatura digital / rubrica</label>
+        <input type="text" placeholder="Espaço reservado para assinatura">
+      </div>
+    </div>
+    <div style="padding: 0 20px 20px; display:flex; justify-content:flex-end; gap:12px; flex-wrap:wrap">
+      <button class="btn btn-secundario no-print" onclick="limpar()">🗑 Novo paciente</button>
+      <button class="btn btn-secundario no-print" onclick="window.print()">🖨 Imprimir / PDF</button>
+      <button class="btn btn-primario no-print" onclick="salvarPaciente()">💾 Salvar paciente</button>
+    </div>
+  </div>
+
+</div><!-- /wrapper -->
+
+<!-- MODAL LISTA DE PACIENTES -->
+<div id="modalPacientes" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(26,58,92,0.55);backdrop-filter:blur(3px)" onclick="fecharModalFora(event)">
+  <div style="background:white;border-radius:14px;max-width:680px;width:94%;margin:40px auto;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.3);overflow:hidden">
+    <!-- Header modal -->
+    <div style="background:var(--azul);color:white;padding:18px 22px;display:flex;align-items:center;gap:12px">
+      <span style="font-size:20px">👥</span>
+      <div>
+        <div style="font-family:'DM Serif Display',serif;font-size:16px;font-weight:400">Pacientes Salvos</div>
+        <div style="font-size:11.5px;opacity:0.75;margin-top:2px" id="qtdPacientes">0 pacientes</div>
+      </div>
+      <button onclick="fecharModal()" style="margin-left:auto;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">×</button>
+    </div>
+    <!-- Busca -->
+    <div style="padding:14px 22px;border-bottom:1px solid var(--cinza-borda);background:var(--cinza)">
+      <input id="buscaPaciente" type="text" placeholder="🔍  Buscar por nome ou data..." oninput="filtrarPacientes()" style="width:100%;border:1px solid var(--cinza-borda);border-radius:7px;padding:9px 13px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;background:white">
+    </div>
+    <!-- Lista -->
+    <div id="listaPacientes" style="overflow-y:auto;flex:1;padding:16px 22px;display:flex;flex-direction:column;gap:10px">
+      <div id="semPacientes" style="text-align:center;padding:40px 20px;color:var(--texto-leve)">
+        <div style="font-size:40px;margin-bottom:12px">📋</div>
+        <div style="font-size:14px">Nenhum paciente salvo ainda.</div>
+        <div style="font-size:12px;margin-top:6px">Preencha o formulário e clique em <strong>Salvar paciente</strong>.</div>
+      </div>
+    </div>
+    <!-- Rodapé modal -->
+    <div style="padding:14px 22px;border-top:1px solid var(--cinza-borda);background:var(--cinza);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:11.5px;color:var(--texto-leve)">☁️ Dados salvos na nuvem (Supabase) — compartilhados com a equipe.</span>
+      <button onclick="novoFormulario()" style="background:var(--verde);color:white;border:none;border-radius:7px;padding:9px 18px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer">＋ Novo paciente</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOTÃO FLUTUANTE -->
+<button class="fab-adicionar no-print" onclick="abrirModalPergunta()" title="Adicionar pergunta personalizada ao formulário">
+  <span class="fab-icone">＋</span>
+  Adicionar perguntas
+</button>
+
+<!-- MODAL ADICIONAR PERGUNTA -->
+<div id="modalPergunta" class="modal-pergunta-overlay" onclick="fecharModalPerguntaFora(event)">
+  <div class="modal-pergunta-box">
+    <div class="modal-pergunta-header">
+      <span style="font-size:20px">✏️</span>
+      <h2>Adicionar pergunta personalizada</h2>
+      <button onclick="fecharModalPergunta()" title="Fechar">×</button>
+    </div>
+    <div class="modal-pergunta-body">
+      <div class="campo">
+        <label>Texto da pergunta <span style="color:#c0392b">*</span></label>
+        <input id="mpTexto" type="text" placeholder="Ex: O paciente pratica atividade física?">
+      </div>
+      <div class="campo">
+        <label>Tipo de resposta</label>
+        <select id="mpTipo">
+          <option value="texto">Campo de texto (linha)</option>
+          <option value="textarea">Texto longo (parágrafo)</option>
+          <option value="select">Lista de opções (Sim / Não / Não sei)</option>
+          <option value="checkbox">Caixas de seleção (múltipla escolha)</option>
+        </select>
+      </div>
+      <div class="campo" id="mpOpcoesWrap" style="display:none">
+        <label>Opções (uma por linha)</label>
+        <textarea id="mpOpcoes" placeholder="Ex:\nSim\nNão\nÀs vezes" style="min-height:80px"></textarea>
+      </div>
+      <div class="campo">
+        <label>Adicionar na seção</label>
+        <select id="mpSecao">
+          <option value="s1">1. Identificação do Paciente</option>
+          <option value="s2">2. Queixa Principal</option>
+          <option value="s4">3. Avaliação Funcional Atual</option>
+          <option value="s5">4. Antecedentes Clínicos e Familiares</option>
+          <option value="s6">5. Contexto Familiar e Social</option>
+          <option value="s7">6. Exame Físico</option>
+          <option value="s8" selected>7. Encaminhamentos e Plano Terapêutico</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-pergunta-footer">
+      <button class="btn btn-secundario" onclick="fecharModalPergunta()">Cancelar</button>
+      <button class="btn btn-primario" onclick="confirmarPergunta()">＋ Adicionar ao formulário</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1a3a5c;color:white;padding:12px 24px;border-radius:30px;font-size:13px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.25);white-space:nowrap"></div>
+
+<script>
+// ── SUPABASE CONFIG ────────────────────────────────────────
+const SUPABASE_URL = 'https://xvmjjrjprmzvvgwxwjtn.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_TMyG64infSbQl2jSaRsFRA_zc7J120O';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── TOGGLE SEÇÕES ──────────────────────────────────────────
+function toggle(id) {
+  const pagina = document.getElementById(id);
+  const header = pagina.querySelector('.sec-header');
+  const body   = pagina.querySelector('.sec-body');
+  header.classList.toggle('aberto');
+  body.classList.toggle('aberto');
+}
+
+// ── PROGRESSO ─────────────────────────────────────────────
+function calcProgress() {
+  const campos = document.querySelectorAll('input:not([readonly]), select, textarea');
+  let total = campos.length, preenchidos = 0;
+  campos.forEach(c => {
+    if (c.tagName === 'INPUT' && (c.type === 'checkbox' || c.type === 'radio')) return;
+    if (c.value && c.value.trim() !== '') preenchidos++;
+  });
+  const pct = Math.round((preenchidos / total) * 100);
+  document.getElementById('pct').textContent = pct + '%';
+  document.getElementById('barra').style.width = pct + '%';
+}
+document.querySelectorAll('input, select, textarea').forEach(el => el.addEventListener('input', calcProgress));
+
+// ── IMC AUTOMÁTICO ────────────────────────────────────────
+function calcIMC() {
+  const linhas = document.querySelectorAll('.tabela-exame tr');
+  let peso, altura, imcField;
+  linhas.forEach(tr => {
+    const td  = tr.querySelector('td:first-child');
+    if (!td) return;
+    const inp = tr.querySelector('input');
+    if (!inp) return;
+    if (td.textContent.includes('Peso'))   peso     = parseFloat(inp.value);
+    if (td.textContent.includes('Altura')) altura   = parseFloat(inp.value);
+    if (td.textContent.includes('IMC'))    imcField = inp;
+  });
+  if (peso && altura && imcField) {
+    imcField.value = (peso / Math.pow(altura / 100, 2)).toFixed(1) + ' kg/m²';
+  }
+}
+document.querySelectorAll('.tabela-exame input').forEach(el => el.addEventListener('input', calcIMC));
+
+// ── TOAST ─────────────────────────────────────────────────
+function mostrarToast(msg, cor) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = cor || '#1a3a5c';
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.display = 'none', 3000);
+}
+
+// ── COLETAR DADOS DO FORMULÁRIO ───────────────────────────
+function coletarDados() {
+  const dados = { _id: Date.now(), _salvoEm: new Date().toLocaleString('pt-BR') };
+  document.querySelectorAll('input:not([readonly]), select, textarea').forEach((el, i) => {
+    const key = el.dataset.key || ('campo_' + i);
+    if (el.type === 'checkbox') dados[key] = el.checked;
+    else dados[key] = el.value;
+  });
+  // Guardar rótulos para escalas
+  document.querySelectorAll('.escala-val').forEach((span, i) => {
+    dados['escala_val_' + i] = span.textContent;
+  });
+  return dados;
+}
+
+// ── RESTAURAR DADOS NO FORMULÁRIO ────────────────────────
+function restaurarDados(dados) {
+  document.querySelectorAll('input:not([readonly]), select, textarea').forEach((el, i) => {
+    const key = el.dataset.key || ('campo_' + i);
+    if (dados[key] === undefined) return;
+    if (el.type === 'checkbox') el.checked = dados[key];
+    else el.value = dados[key];
+  });
+  document.querySelectorAll('.escala-val').forEach((span, i) => {
+    if (dados['escala_val_' + i] !== undefined) span.textContent = dados['escala_val_' + i];
+  });
+  // Abrir todas as seções
+  document.querySelectorAll('.sec-header').forEach(h => h.classList.add('aberto'));
+  document.querySelectorAll('.sec-body').forEach(b => b.classList.add('aberto'));
+  calcProgress();
+}
+
+// ── SALVAR PACIENTE ───────────────────────────────────────
+let pacienteEditandoId = null;
+
+async function salvarPaciente() {
+  const nome = document.querySelector('#s1 input[placeholder="Nome do paciente"]')?.value?.trim();
+  if (!nome) {
+    mostrarToast('⚠️ Preencha o nome do paciente antes de salvar.', '#c45f1a');
+    return;
+  }
+
+  const btnSalvar = document.querySelector('.btn-primario');
+  if (btnSalvar) { btnSalvar.textContent = '⏳ Salvando...'; btnSalvar.disabled = true; }
+
+  const dados = coletarDados();
+  const dataNasc = document.querySelector('#s1 input[type="date"]')?.value || '';
+  const salvoEm  = new Date().toLocaleString('pt-BR');
+
+  try {
+    if (pacienteEditandoId) {
+      const { error } = await sb.from('pacientes').update({
+        nome, data_nasc: dataNasc, salvo_em: salvoEm, dados
+      }).eq('id', pacienteEditandoId);
+      if (error) throw error;
+      mostrarToast('✅ Paciente atualizado com sucesso!', '#2e7d5e');
+    } else {
+      const { data, error } = await sb.from('pacientes').insert({
+        nome, data_nasc: dataNasc, salvo_em: salvoEm, dados
+      }).select('id').single();
+      if (error) throw error;
+      pacienteEditandoId = data.id;
+      mostrarToast('✅ Paciente salvo na nuvem!', '#2e7d5e');
+    }
+    atualizarIndicadorSalvo(nome);
+  } catch (err) {
+    console.error(err);
+    mostrarToast('❌ Erro ao salvar: ' + (err.message || 'verifique a conexão.'), '#c0392b');
+  } finally {
+    if (btnSalvar) { btnSalvar.textContent = '💾 Salvar paciente'; btnSalvar.disabled = false; }
+  }
+}
+
+function atualizarIndicadorSalvo(nome) {
+  let ind = document.getElementById('indicadorSalvo');
+  if (!ind) {
+    ind = document.createElement('div');
+    ind.id = 'indicadorSalvo';
+    ind.style.cssText = 'background:var(--verde-claro);color:var(--verde);border-left:4px solid var(--verde);border-radius:6px;padding:10px 16px;font-size:12.5px;margin-bottom:18px;display:flex;align-items:center;gap:8px';
+    document.querySelector('.wrapper').insertBefore(ind, document.querySelector('.wrapper').firstChild);
+  }
+  ind.innerHTML = '☁️ <strong>Em edição:</strong> ' + nome + ' · <span style="opacity:.7">Lembre-se de salvar após alterações</span>';
+}
+
+// ── CACHE LOCAL DA LISTA ─────────────────────────────────
+let _cacheListaPacientes = [];
+
+// ── ABRIR MODAL ───────────────────────────────────────────
+async function abrirListaPacientes() {
+  document.getElementById('buscaPaciente').value = '';
+  document.getElementById('modalPacientes').style.display = 'block';
+  document.getElementById('qtdPacientes').textContent = 'Carregando...';
+  await recarregarLista();
+}
+function fecharModal() {
+  document.getElementById('modalPacientes').style.display = 'none';
+}
+function fecharModalFora(e) {
+  if (e.target === document.getElementById('modalPacientes')) fecharModal();
+}
+
+// ── BUSCAR LISTA DO SUPABASE ──────────────────────────────
+async function recarregarLista(filtro) {
+  try {
+    let query = sb.from('pacientes').select('id, nome, data_nasc, salvo_em').order('nome');
+    if (filtro) query = query.ilike('nome', '%' + filtro + '%');
+    const { data, error } = await query;
+    if (error) throw error;
+    _cacheListaPacientes = (data || []).map(p => ({
+      _id: p.id, nome: p.nome, dataNasc: p.data_nasc, _salvoEm: p.salvo_em
+    }));
+    renderizarLista(_cacheListaPacientes);
+  } catch (err) {
+    mostrarToast('❌ Erro ao carregar lista: ' + (err.message || ''), '#c0392b');
+    renderizarLista([]);
+  }
+}
+
+// ── RENDERIZAR LISTA ──────────────────────────────────────
+function renderizarLista(lista) {
+  const cont  = document.getElementById('listaPacientes');
+  const sem   = document.getElementById('semPacientes');
+  const qtd   = document.getElementById('qtdPacientes');
+  qtd.textContent = lista.length + (lista.length === 1 ? ' paciente' : ' pacientes');
+
+  cont.querySelectorAll('.card-paciente').forEach(c => c.remove());
+
+  if (lista.length === 0) { sem.style.display = 'block'; return; }
+  sem.style.display = 'none';
+
+  lista.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'card-paciente';
+    card.dataset.id = p._id;
+
+    const ativo = pacienteEditandoId === p._id;
+    card.style.cssText = `
+      border:1.5px solid ${ativo ? 'var(--azul-medio)' : 'var(--cinza-borda)'};
+      border-radius:9px;
+      padding:13px 16px;
+      display:flex;align-items:center;gap:14px;
+      background:${ativo ? 'var(--azul-claro)' : 'white'};
+      transition:border-color .2s,background .2s;
+      cursor:pointer;
+    `;
+    card.onmouseenter = () => { if (!ativo) card.style.borderColor = 'var(--azul-medio)'; };
+    card.onmouseleave = () => { if (!ativo) card.style.borderColor = 'var(--cinza-borda)'; };
+
+    const iniciais = (p.nome || '?').split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
+    const dataNasc = p.dataNasc ? new Date(p.dataNasc + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+
+    card.innerHTML = `
+      <div style="width:42px;height:42px;border-radius:50%;background:var(--azul-medio);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0">${iniciais}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nome}</div>
+        <div style="font-size:11.5px;color:var(--texto-leve);margin-top:2px">Nascimento: ${dataNasc} · Salvo em: ${p._salvoEm || '—'}</div>
+      </div>
+      <div style="display:flex;gap:7px;flex-shrink:0">
+        <button onclick="carregarPaciente(${p._id})" title="Abrir" style="background:var(--azul-medio);color:white;border:none;border-radius:6px;width:32px;height:32px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center">📂</button>
+        <button onclick="imprimirPaciente(${p._id},event)" title="Salvar PDF" style="background:#e6f4ef;color:var(--verde);border:none;border-radius:6px;width:32px;height:32px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center">🖨</button>
+        <button onclick="excluirPaciente(${p._id},event)" title="Excluir" style="background:#fee2e2;color:#c0392b;border:none;border-radius:6px;width:32px;height:32px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center">🗑</button>
+      </div>
+    `;
+    cont.appendChild(card);
+  });
+}
+
+// ── FILTRAR ───────────────────────────────────────────────
+async function filtrarPacientes() {
+  const q = document.getElementById('buscaPaciente').value.trim();
+  await recarregarLista(q || null);
+}
+
+// ── CARREGAR PACIENTE NO FORMULÁRIO ──────────────────────
+async function carregarPaciente(id) {
+  try {
+    mostrarToast('⏳ Carregando dados...', '#2d5986');
+    const { data, error } = await sb.from('pacientes').select('*').eq('id', id).single();
+    if (error) throw error;
+    pacienteEditandoId = id;
+    // dados JSON está no campo dados; completar com campos de topo
+    const registro = { ...(data.dados || {}), nome: data.nome, dataNasc: data.data_nasc, _salvoEm: data.salvo_em, _id: data.id };
+    restaurarDados(registro);
+    fecharModal();
+    atualizarIndicadorSalvo(data.nome);
+    mostrarToast('📂 Paciente carregado: ' + data.nome, '#2d5986');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (err) {
+    mostrarToast('❌ Erro ao carregar paciente: ' + (err.message || ''), '#c0392b');
+  }
+}
+
+// ── EXCLUIR ───────────────────────────────────────────────
+async function excluirPaciente(id, e) {
+  e.stopPropagation();
+  const p = _cacheListaPacientes.find(x => x._id === id);
+  if (!confirm('Excluir o paciente "' + (p?.nome || '') + '"? Esta ação não pode ser desfeita.')) return;
+  try {
+    const { error } = await sb.from('pacientes').delete().eq('id', id);
+    if (error) throw error;
+    if (pacienteEditandoId === id) {
+      pacienteEditandoId = null;
+      const ind = document.getElementById('indicadorSalvo');
+      if (ind) ind.remove();
+    }
+    await recarregarLista();
+    mostrarToast('🗑 Paciente excluído.', '#7a4f2e');
+  } catch (err) {
+    mostrarToast('❌ Erro ao excluir: ' + (err.message || ''), '#c0392b');
+  }
+}
+
+// ── NOVO FORMULÁRIO ───────────────────────────────────────
+function novoFormulario() {
+  if (!confirm('Deseja iniciar um novo formulário? O preenchimento atual será perdido se não foi salvo.')) return;
+  pacienteEditandoId = null;
+  const ind = document.getElementById('indicadorSalvo');
+  if (ind) ind.remove();
+  document.querySelectorAll('input:not([readonly]), select, textarea').forEach(el => {
+    if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+    else el.value = '';
+  });
+  document.querySelectorAll('.escala-val').forEach(v => v.textContent = '0');
+  calcProgress();
+  fecharModal();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── IMPRIMIR PACIENTE (PDF direto da lista) ───────────────
+async function imprimirPaciente(id, e) {
+  e.stopPropagation();
+  mostrarToast('⏳ Preparando PDF...', '#2d5986');
+  const { data: row, error } = await sb.from('pacientes').select('*').eq('id', id).single();
+  if (error || !row) { mostrarToast('❌ Erro ao buscar dados para impressão.', '#c0392b'); return; }
+  const p = { ...(row.dados || {}), nome: row.nome, dataNasc: row.data_nasc, _salvoEm: row.salvo_em, _id: row.id };
+  if (!p) return;
+
+  // Mapear índices dos campos igual à ordem do DOM
+  const todosInputs = Array.from(document.querySelectorAll('input:not([readonly]), select, textarea'));
+  const todasEscalas = Array.from(document.querySelectorAll('.escala-val'));
+
+  // Montar mapa label → valor a partir dos dados salvos
+  function val(idx) {
+    const key = todosInputs[idx]?.dataset.key || ('campo_' + idx);
+    return p[key] || '';
+  }
+  function checked(idx) { return p['campo_' + idx] === true; }
+  function escala(idx) { return p['escala_val_' + idx] || '0'; }
+
+  // Coletar todas as seções/campos em formato legível
+  function secao(titulo, cor, linhas) {
+    const itens = linhas.filter(l => l).map(l => {
+      if (typeof l === 'string') return `<tr><td colspan="2" style="padding:4px 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#5a6580;border-bottom:1px solid #e8edf4">${l}</td></tr>`;
+      const [label, valor] = l;
+      if (!valor && valor !== 0) return '';
+      return `<tr>
+        <td style="padding:5px 8px;width:42%;color:#5a6580;font-size:12px;border-bottom:1px solid #f0f3f7;vertical-align:top">${label}</td>
+        <td style="padding:5px 8px;font-size:12px;border-bottom:1px solid #f0f3f7;vertical-align:top;color:#1c2535">${valor}</td>
+      </tr>`;
+    }).join('');
+    if (!itens.trim()) return '';
+    return `
+      <div style="margin-bottom:18px;break-inside:avoid">
+        <div style="background:${cor};color:white;padding:8px 12px;border-radius:6px 6px 0 0;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase">${titulo}</div>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #d8dde6;border-top:none;border-radius:0 0 6px 6px;overflow:hidden;background:white">${itens}</table>
+      </div>`;
+  }
+
+  // Recriar o DOM temporariamente para ler os valores
+  // Mais seguro: restaurar num iframe oculto, capturar e imprimir
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0';
+  document.body.appendChild(iframe);
+
+  const idoc = iframe.contentDocument || iframe.contentWindow.document;
+
+  // Coletar checkboxes por seção manualmente usando labels do DOM
+  function checkboxesDe(sectionId) {
+    const sec = document.getElementById(sectionId);
+    if (!sec) return '';
+    const marcados = [];
+    sec.querySelectorAll('input[type=checkbox]').forEach((cb, i) => {
+      const key = cb.dataset.key || ('campo_' + todosInputs.indexOf(cb));
+      if (p[key]) {
+        const label = cb.closest('label');
+        if (label) marcados.push(label.textContent.trim());
+      }
+    });
+    return marcados.length ? marcados.join(', ') : '—';
+  }
+
+  function campoDe(sectionId, placeholder) {
+    const sec = document.getElementById(sectionId);
+    if (!sec) return '';
+    const el = sec.querySelector(`[placeholder="${placeholder}"]`);
+    if (!el) return '';
+    const idx = todosInputs.indexOf(el);
+    return val(idx) || '—';
+  }
+
+  function selectDe(sectionId, labelText) {
+    const sec = document.getElementById(sectionId);
+    if (!sec) return '';
+    let found = '';
+    sec.querySelectorAll('select').forEach(sel => {
+      const label = sel.closest('.campo')?.querySelector('label')?.textContent?.trim();
+      if (label && label.includes(labelText)) {
+        const idx = todosInputs.indexOf(sel);
+        found = val(idx) || '—';
+      }
+    });
+    return found;
+  }
+
+  function textareaDe(sectionId, placeholder) {
+    const sec = document.getElementById(sectionId);
+    if (!sec) return '';
+    const el = sec.querySelector(`textarea[placeholder*="${placeholder.substring(0,20)}"]`);
+    if (!el) return '';
+    const idx = todosInputs.indexOf(el);
+    return val(idx) || '—';
+  }
+
+  const dataNasc = p.dataNasc ? new Date(p.dataNasc + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head>
+  <meta charset="UTF-8">
+  <title>Anamnese — ${p.nome}</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'DM Sans',sans-serif; color:#1c2535; background:white; padding:28px 32px; font-size:12.5px; }
+    @media print { body { padding:16px; } }
+    h1 { font-family:'DM Serif Display',serif; font-size:20px; font-weight:400; }
+  </style>
+  </head><body>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #1a3a5c">
+    <div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#2d5986;margin-bottom:4px">APAE · Formulário de Anamnese</div>
+      <h1>${p.nome}</h1>
+      <div style="font-size:11.5px;color:#5a6580;margin-top:4px">Nascimento: ${dataNasc} · Salvo em: ${p._salvoEm || '—'}</div>
+    </div>
+    <div style="text-align:right;font-size:11px;color:#5a6580">
+      <div>Data de impressão:</div>
+      <div style="font-weight:600">${new Date().toLocaleDateString('pt-BR')}</div>
+    </div>
+  </div>
+
+  ${secao('1. Identificação do Paciente', '#2d5986', [
+    ['Nome completo', campoDe('s1', 'Nome do paciente')],
+    ['Data de nascimento', dataNasc],
+    ['Sexo biológico', selectDe('s1', 'Sexo')],
+    ['Identidade de gênero', campoDe('s1', 'Como o paciente se identifica')],
+    ['Prontuário / Matrícula', campoDe('s1', 'Nº interno')],
+    ['CNS', campoDe('s1', '000.0000.0000.0000')],
+    ['Endereço', campoDe('s1', 'Rua, número')],
+    ['Telefone', campoDe('s1', '(XX) 9XXXX-XXXX')],
+    ['Responsável legal', campoDe('s1', 'Nome e grau de parentesco')],
+    ['Escola / Instituição', campoDe('s1', 'Nome da escola')],
+    ['Data da consulta', (() => { const sec = document.getElementById('s1'); const dates = sec?.querySelectorAll('input[type=date]'); if (!dates || dates.length < 2) return '—'; const idx = todosInputs.indexOf(dates[1]); const v = val(idx); return v ? new Date(v + 'T12:00:00').toLocaleDateString('pt-BR') : '—'; })()],
+  ])}
+
+  ${secao('2. Queixa Principal', '#2e7d5e', [
+    ['Queixa principal', (() => { const sec = document.getElementById('s2'); const el = sec?.querySelector('textarea'); const idx = todosInputs.indexOf(el); return val(idx) || '—'; })()],
+    ['Há quanto tempo', campoDe('s2', 'Ex: desde os 2 anos')],
+    ['Profissionais que já atenderam', checkboxesDe('s2').split(', ').slice(0, 20).join(', ') || '—'],
+    ['Diagnósticos recebidos', checkboxesDe('s2')],
+    ['CID-10 / CID-11', campoDe('s2', 'Ex: F70')],
+  ])}
+
+  ${secao('3. Avaliação Funcional Atual', '#7a4f2e', [
+    ['Nível de DI estimado', selectDe('s4', 'Nível de DI')],
+    ['Escolaridade atual', selectDe('s4', 'Escolaridade')],
+    ['Habilidades de autocuidado', checkboxesDe('s4')],
+    ['Comportamentos desafiadores', checkboxesDe('s4')],
+    ['Intensidade dos comportamentos', escala(0) + ' / 10'],
+  ])}
+
+  ${secao('4. Antecedentes Clínicos e Familiares', '#2c3e50', [
+    ['Condições diagnosticadas', checkboxesDe('s5')],
+    ['Internações / Cirurgias', textareaDe('s5', 'Descreva: motivo')],
+    ['Medicações em uso', textareaDe('s5', 'Nome do medicamento')],
+    ['Alergias', campoDe('s5', 'Medicamentos, alimentos')],
+    ['Histórico familiar', textareaDe('s5', 'Ex: pais primos')],
+    ['Vacinação', selectDe('s5', 'Vacinação')],
+    ['Última consulta médica', (() => { const sec = document.getElementById('s5'); const d = sec?.querySelector('input[type=date]'); if (!d) return '—'; const idx = todosInputs.indexOf(d); const v = val(idx); return v ? new Date(v + 'T12:00:00').toLocaleDateString('pt-BR') : '—'; })()],
+  ])}
+
+  ${secao('5. Contexto Familiar e Social', '#a63f5b', [
+    ['Composição familiar', campoDe('s6', 'Ex: mãe, pai')],
+    ['Renda familiar', selectDe('s6', 'Renda')],
+    ['BPC / LOAS', selectDe('s6', 'benefício')],
+    ['Principal cuidador', campoDe('s6', 'Ex: mãe (40 anos')],
+    ['Rede de apoio', checkboxesDe('s6')],
+    ['Sobrecarga do cuidador', escala(1) + ' / 10'],
+    ['Barreiras ao tratamento', checkboxesDe('s6')],
+    ['Observações sociais', textareaDe('s6', 'Condições de moradia')],
+  ])}
+
+  ${secao('6. Exame Físico', '#2d5986', [
+    ['Peso (kg)', (() => { const sec = document.getElementById('s7'); const rows = sec?.querySelectorAll('.tabela-exame tr'); let v = '—'; rows?.forEach(tr => { if (tr.querySelector('td')?.textContent?.includes('Peso')) { const inp = tr.querySelector('input'); const idx = todosInputs.indexOf(inp); v = val(idx) || '—'; } }); return v; })()],
+    ['Altura (cm)', (() => { const sec = document.getElementById('s7'); const rows = sec?.querySelectorAll('.tabela-exame tr'); let v = '—'; rows?.forEach(tr => { if (tr.querySelector('td')?.textContent === 'Altura / Estatura (cm)') { const inp = tr.querySelector('input'); const idx = todosInputs.indexOf(inp); v = val(idx) || '—'; } }); return v; })()],
+    ['IMC', (() => { const sec = document.getElementById('s7'); const rows = sec?.querySelectorAll('.tabela-exame tr'); let v = '—'; rows?.forEach(tr => { if (tr.querySelector('td')?.textContent?.includes('IMC')) { const inp = tr.querySelector('input'); const idx = todosInputs.indexOf(inp); v = val(idx) || '—'; } }); return v; })()],
+    ['Temperatura (°C)', (() => { const sec = document.getElementById('s7'); const rows = sec?.querySelectorAll('.tabela-exame tr'); let v = '—'; rows?.forEach(tr => { if (tr.querySelector('td')?.textContent?.includes('Temperatura')) { const inp = tr.querySelector('input'); const idx = todosInputs.indexOf(inp); v = val(idx) || '—'; } }); return v; })()],
+    ['FC (bpm)', (() => { const sec = document.getElementById('s7'); const rows = sec?.querySelectorAll('.tabela-exame tr'); let v = '—'; rows?.forEach(tr => { if (tr.querySelector('td')?.textContent?.includes('cardíaca')) { const inp = tr.querySelector('input'); const idx = todosInputs.indexOf(inp); v = val(idx) || '—'; } }); return v; })()],
+    ['FR (irpm)', (() => { const sec = document.getElementById('s7'); const rows = sec?.querySelectorAll('.tabela-exame tr'); let v = '—'; rows?.forEach(tr => { if (tr.querySelector('td')?.textContent?.includes('respiratória')) { const inp = tr.querySelector('input'); const idx = todosInputs.indexOf(inp); v = val(idx) || '—'; } }); return v; })()],
+    ['PA (mmHg)', (() => { const sec = document.getElementById('s7'); const rows = sec?.querySelectorAll('.tabela-exame tr'); let v = '—'; rows?.forEach(tr => { if (tr.querySelector('td')?.textContent?.includes('arterial')) { const inp = tr.querySelector('input'); const idx = todosInputs.indexOf(inp); v = val(idx) || '—'; } }); return v; })()],
+    ['SpO₂ (%)', (() => { const sec = document.getElementById('s7'); const rows = sec?.querySelectorAll('.tabela-exame tr'); let v = '—'; rows?.forEach(tr => { if (tr.querySelector('td')?.textContent?.includes('Satura')) { const inp = tr.querySelector('input'); const idx = todosInputs.indexOf(inp); v = val(idx) || '—'; } }); return v; })()],
+    ['Estado geral', selectDe('s7', 'Estado geral')],
+    ['Cooperação no exame', selectDe('s7', 'cooperação')],
+    ['Consciência', selectDe('s7', 'Consciência')],
+    ['Hidratação / Nutrição', selectDe('s7', 'Hidratação')],
+    ['Coloração da pele', (() => { const sec = document.getElementById('s7'); let v='—'; sec?.querySelectorAll('select').forEach(sel => { const td = sel.closest('tr')?.querySelector('td'); if(td?.textContent?.includes('Coloração')) { const idx = todosInputs.indexOf(sel); v = val(idx)||'—'; } }); return v; })()],
+    ['Manchas / lesões cutâneas', (() => { const sec = document.getElementById('s7'); let v='—'; sec?.querySelectorAll('.tabela-exame tr').forEach(tr => { if(tr.querySelector('td')?.textContent?.includes('Manchas')) { const inp = tr.querySelector('input'); const idx = todosInputs.indexOf(inp); v = val(idx)||'—'; } }); return v; })()],
+    ['Mucosas orais', (() => { const sec = document.getElementById('s7'); let v='—'; sec?.querySelectorAll('select').forEach(sel => { const td = sel.closest('tr')?.querySelector('td'); if(td?.textContent?.includes('Mucosas')) { const idx = todosInputs.indexOf(sel); v = val(idx)||'—'; } }); return v; })()],
+    ['Condição dentária', (() => { const sec = document.getElementById('s7'); let v='—'; sec?.querySelectorAll('.tabela-exame tr').forEach(tr => { if(tr.querySelector('td')?.textContent?.includes('dentária')) { const inp = tr.querySelector('input'); const idx = todosInputs.indexOf(inp); v = val(idx)||'—'; } }); return v; })()],
+    ['Tórax — Ausculta pulmonar', (() => { const sec = document.getElementById('s7'); let v='—'; sec?.querySelectorAll('select').forEach(sel => { const td = sel.closest('tr')?.querySelector('td'); if(td?.textContent?.includes('pulmonar')) { const idx = todosInputs.indexOf(sel); v = val(idx)||'—'; } }); return v; })()],
+    ['Tórax — Ausculta cardíaca', (() => { const sec = document.getElementById('s7'); let v='—'; sec?.querySelectorAll('select').forEach(sel => { const td = sel.closest('tr')?.querySelector('td'); if(td?.textContent?.includes('cardíaca')) { const idx = todosInputs.indexOf(sel); v = val(idx)||'—'; } }); return v; })()],
+    ['Formato do tórax', (() => { const sec = document.getElementById('s7'); let v='—'; sec?.querySelectorAll('.tabela-exame tr').forEach(tr => { if(tr.querySelector('td')?.textContent?.includes('tórax')) { const inp = tr.querySelector('input'); const idx = todosInputs.indexOf(inp); v = val(idx)||'—'; } }); return v; })()],
+    ['Conclusão / Hipóteses diagnósticas', (() => { const sec = document.getElementById('s7'); const ta = sec?.querySelector('textarea'); const idx = todosInputs.indexOf(ta); return val(idx)||'—'; })()],
+  ])}
+
+  ${secao('7. Encaminhamentos e Plano Terapêutico', '#2e7d5e', [
+    ['Encaminhamentos solicitados', checkboxesDe('s8')],
+    ['Exames complementares', checkboxesDe('s8')],
+    ['Plano terapêutico', (() => { const sec = document.getElementById('s8'); const ta = sec?.querySelector('textarea'); const idx = todosInputs.indexOf(ta); return val(idx)||'—'; })()],
+    ['Urgência', selectDe('s8', 'Urgência')],
+    ['Retorno agendado', (() => { const sec = document.getElementById('s8'); const d = sec?.querySelector('input[type=date]'); if(!d) return '—'; const idx = todosInputs.indexOf(d); const v = val(idx); return v ? new Date(v+'T12:00:00').toLocaleDateString('pt-BR') : '—'; })()],
+    ['Observações finais', (() => { const sec = document.getElementById('s8'); const tas = sec?.querySelectorAll('textarea'); const ta = tas?.[1]; const idx = todosInputs.indexOf(ta); return val(idx)||'—'; })()],
+  ])}
+
+  ${secao('Profissional Responsável', '#1a3a5c', [
+    ['Nome', campoDe('s9', 'Nome completo')],
+    ['Conselho / Registro', campoDe('s9', 'Ex: CRM')],
+    ['Especialidade', campoDe('s9', 'Ex: Pediatra')],
+  ])}
+
+  <div style="margin-top:32px;padding-top:12px;border-top:1px solid #d8dde6;font-size:10.5px;color:#aaa;text-align:center">
+    Documento gerado pelo sistema de Anamnese APAE · ${new Date().toLocaleString('pt-BR')}
+  </div>
+  </body></html>`;
+
+  idoc.open();
+  idoc.write(html);
+  idoc.close();
+
+  // Aguardar fontes e imprimir
+  setTimeout(() => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    setTimeout(() => document.body.removeChild(iframe), 2000);
+  }, 600);
+
+  mostrarToast('🖨 Preparando PDF de ' + p.nome + '…', '#2e7d5e');
+}
+
+// ── LIMPAR (mantido para compatibilidade) ─────────────────
+function limpar() { novoFormulario(); }
+
+// ── MODAL ADICIONAR PERGUNTA ──────────────────────────────
+function abrirModalPergunta() {
+  document.getElementById('mpTexto').value = '';
+  document.getElementById('mpTipo').value = 'texto';
+  document.getElementById('mpOpcoes').value = '';
+  document.getElementById('mpOpcoesWrap').style.display = 'none';
+  document.getElementById('modalPergunta').classList.add('aberto');
+  setTimeout(() => document.getElementById('mpTexto').focus(), 80);
+}
+
+function fecharModalPergunta() {
+  document.getElementById('modalPergunta').classList.remove('aberto');
+}
+
+function fecharModalPerguntaFora(e) {
+  if (e.target === document.getElementById('modalPergunta')) fecharModalPergunta();
+}
+
+// Mostrar/ocultar campo de opções quando tipo é checkbox
+document.getElementById('mpTipo').addEventListener('change', function() {
+  const wrap = document.getElementById('mpOpcoesWrap');
+  wrap.style.display = (this.value === 'checkbox') ? 'block' : 'none';
+});
+
+function confirmarPergunta() {
+  const texto = document.getElementById('mpTexto').value.trim();
+  if (!texto) {
+    mostrarToast('⚠️ Informe o texto da pergunta.', '#c45f1a');
+    document.getElementById('mpTexto').focus();
+    return;
+  }
+  const tipo   = document.getElementById('mpTipo').value;
+  const secao  = document.getElementById('mpSecao').value;
+  const opcoes = document.getElementById('mpOpcoes').value
+                   .split('\n').map(s => s.trim()).filter(Boolean);
+
+  // Encontrar o sec-body da seção escolhida
+  const pagina  = document.getElementById(secao);
+  if (!pagina) return;
+  let secBody = pagina.querySelector('.sec-body');
+
+  // Garantir que o sec-body está visível (abrir a seção se fechada)
+  if (!secBody.classList.contains('aberto')) {
+    toggle(secao);
+  }
+
+  // Criar o campo
+  const wrapper = document.createElement('div');
+  wrapper.className = 'campo col-full';
+  wrapper.style.marginTop = '14px';
+  wrapper.style.paddingTop = '12px';
+  wrapper.style.borderTop = '1.5px dashed var(--cinza-borda)';
+  wrapper.dataset.customQuestion = 'true';
+
+  const label = document.createElement('label');
+  label.style.display = 'block';
+  label.innerHTML = texto + ' <span style="background:var(--azul-claro);color:var(--azul-medio);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:1px 6px;border-radius:20px;margin-left:4px">personalizada</span>';
+  wrapper.appendChild(label);
+
+  if (tipo === 'texto') {
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.placeholder = 'Resposta...';
+    inp.addEventListener('input', calcProgress);
+    wrapper.appendChild(inp);
+
+  } else if (tipo === 'textarea') {
+    const ta = document.createElement('textarea');
+    ta.placeholder = 'Resposta detalhada...';
+    ta.style.minHeight = '72px';
+    ta.addEventListener('input', calcProgress);
+    wrapper.appendChild(ta);
+
+  } else if (tipo === 'select') {
+    const sel = document.createElement('select');
+    const opts = opcoes.length > 0 ? opcoes : ['Sim', 'Não', 'Não sei'];
+    sel.innerHTML = '<option value="">Selecione</option>' +
+      opts.map(o => `<option>${o}</option>`).join('');
+    sel.addEventListener('input', calcProgress);
+    wrapper.appendChild(sel);
+
+  } else if (tipo === 'checkbox') {
+    const group = document.createElement('div');
+    group.className = 'check-group';
+    const items = opcoes.length > 0 ? opcoes : ['Sim', 'Não', 'Outro'];
+    items.forEach(op => {
+      const lbl = document.createElement('label');
+      const cb  = document.createElement('input');
+      cb.type = 'checkbox';
+      lbl.appendChild(cb);
+      lbl.append(' ' + op);
+      group.appendChild(lbl);
+    });
+    wrapper.appendChild(group);
+  }
+
+  // Inserir no final do grid mais próximo ou direto no sec-body
+  let target = secBody.querySelector('.grid-2, .grid-3');
+  if (target) {
+    target.appendChild(wrapper);
+  } else {
+    secBody.appendChild(wrapper);
+  }
+
+  calcProgress();
+  fecharModalPergunta();
+  mostrarToast('✅ Pergunta adicionada com sucesso!', '#2e7d5e');
+
+  // Scroll suave até a pergunta adicionada
+  setTimeout(() => wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+}
+
+</script>
+</body>
+</html>
